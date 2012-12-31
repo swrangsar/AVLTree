@@ -3,17 +3,20 @@
 #include <time.h>
 #include "avlTree.h"
 #include "randomNumber.h"
-#define LIMIT 300
+#define LIMIT 31
 
 int main()
 {
-	avlTree *tree = createAvlTree(compareNumber, showNumber, destroyNumber);
+	avlTree *tree = avlTreeInit(compareNumber, showNumber, destroyNumber);
 	srand(time(NULL));
 	int i, temp, *num;
 	i = 0;
 	while (i++ < LIMIT) {
-		printf("Inserting %d\n", temp = getRandomNumber());
-		avlTreeInsert(tree, createNumber(temp));
+		temp = getRandomNumber();
+		if (avlTreeInsert(tree, createNumber(temp)))
+			printf("inserted %d\n", temp);
+		else
+			printf("%d already exists!\n", temp);
 	}
 	
 	avlTreeShow(tree);
@@ -34,13 +37,14 @@ int main()
 	
 	i = 0;
 	while (i++ < LIMIT) {
-		printf("Deleting %d\n", temp = getRandomNumber());
+		temp = getRandomNumber();
 		num = createNumber(temp);
-		avlTreeDelete(tree, num);
+		if (avlTreeDelete(tree, num))
+			printf("Deleting %d\n", temp);
 		destroyNumber(num);
 	}
 	avlTreeShow(tree);
 		
-	destroyAvlTree(tree);
+	avlTreeDestroy(tree);	
 	return 0;
 }

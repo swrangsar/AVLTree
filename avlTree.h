@@ -20,11 +20,11 @@ typedef struct avlTree {
 	avlDestroyFunc destroyData;
 } avlTree;
 
-avlTree *createAvlTree(avlCompareFunc compareData, avlShowFunc showData, avlDestroyFunc destroyData);
-void destroyAvlTree(avlTree *tree);
+avlTree *avlTreeInit(avlCompareFunc compareData, avlShowFunc showData, avlDestroyFunc destroyData);
 avlNode *avlTreeSearch(avlTree *tree, void *data);
 avlNode *avlTreeInsert(avlTree *tree, void *data);
-void avlTreeDelete(avlTree *tree, void *data);
+void avlTreeDestroy(avlTree *tree);
+int avlTreeDelete(avlTree *tree, void *data);
 void avlTreeShow(avlTree *tree);
 
 #endif

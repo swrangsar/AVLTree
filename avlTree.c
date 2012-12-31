@@ -5,7 +5,7 @@
 
 static int isLeaf(avlNode *node);
 static int isRoot(avlNode *node);
-static void makeRoot(avlTree *tree, avlNode *node);
+static void setRoot(avlTree *tree, avlNode *node);
 static void pairLeft(avlNode *parent, avlNode *child);
 static void pairRight(avlNode *parent, avlNode *child);
 static void orphan(avlNode *node);
@@ -13,8 +13,10 @@ static avlNode *createAvlNode(void *data);
 static void destroyAvlNode(avlTree *tree, avlNode *node);
 static avlNode *rotateLeft(avlNode *node);
 static avlNode *rotateRight(avlNode *node);
-static avlNode *doubleRotateLeft(avlNode *node);
-static avlNode *doubleRotateRight(avlNode *node);
+static avlNode *rotateLeftAndBalance(avlNode *node);
+static avlNode *rotateRightAndBalance(avlNode *node);
+static avlNode *doubleRotateLeftAndBalance(avlNode *node);
+static avlNode *doubleRotateRightAndBalance(avlNode *node);
 static avlNode *balance(avlNode *node);
 static void updateBalance(avlTree *tree, avlNode *node);
 static avlNode *insert(avlTree *tree, avlNode *node, void *data);
@@ -25,8 +27,13 @@ static void replaceWithPredecessor(avlTree *tree, avlNode *node);
 static void deleteLeaf(avlTree *tree, avlNode *node);
 static void deleteSingleChildNode(avlTree *tree, avlNode *node);
 static void delete(avlTree *tree, avlNode *node);
-static void inorder(avlTree *tree, avlNode *node, int height);
-static void preorder(avlTree *tree, avlNode *node, int height);
+static void inorder(avlTree *tree, avlNode *node);
+static void preorder(avlTree *tree, avlNode *node);
+
+
+/*****************************/
+/*** Basic functions       ***/
+/*****************************/
 
 
 static int isLeaf(avlNode *node)
@@ -41,10 +48,10 @@ static int isRoot(avlNode *node)
 	return (!node->parent)?1:0;
 }
 
-static void makeRoot(avlTree *tree, avlNode *node)
+static void setRoot(avlTree *tree, avlNode *node)
 {
-	checkError(tree, "cannot make root of a null tree!");
-	checkError(node, "Null node is not manually made a root!");
+	checkError(tree, "cannot set root of a null tree!");
+	checkError(node, "Null node cant be set as root!");
 	tree->root = node;
 	if (node->parent) (node->parent = NULL);
 }
@@ -71,6 +78,13 @@ static void orphan(avlNode *node)
 	node->parent = node->left = node->right = NULL;
 }
 
+
+
+/************************************/
+/*** Constructors and destructors ***/
+/************************************/
+
+
 static avlNode *createAvlNode(void *data)
 {
 	avlNode *new = malloc(sizeof(avlNode));
@@ -95,6 +109,31 @@ static void destroyAvlNode(avlTree *tree, avlNode *node)
 	node->data = NULL;
 	free(node);
 }
+
+avlTree *avlTreeInit(avlCompareFunc compareData, avlShowFunc showData, avlDestroyFunc destroyData)
+{
+	avlTree *new = malloc(sizeof(avlTree));
+	checkMemory(new);
+	new->root = NULL;
+	new->compareData = compareData;
+	new->showData = showData;
+	new->destroyData = destroyData;
+	return new;
+}
+
+void avlTreeDestroy(avlTree *tree)
+{
+	checkError(tree, "Cannot destroy NULL tree!");
+	destroyAvlNode(tree, tree->root);
+	free(tree);
+}
+
+
+
+/*****************/
+/*** Rotations ***/
+/*****************/
+
 
 static avlNode *rotateLeft(avlNode *node)
 {
@@ -124,28 +163,83 @@ static avlNode *rotateRight(avlNode *node)
 	return l;	
 }
 
-static avlNode *doubleRotateLeft(avlNode *node)
+
+
+/*********************************/
+/*** Balance factor management ***/
+/*********************************/
+
+
+static avlNode *rotateLeftAndBalance(avlNode *node)
 {
-	checkError(node, "cannot left double rotate a null node!");
+	checkError(node, "cannot left rotate and balance a null node!");
 	avlNode *n, *r;
 	n = node;
 	r = node->right;
 	checkError(r, "right child must exist for left rotation!");
-	checkError(r->left, "left grandchild must exist for double left rotation!");
-	rotateRight(r);
-	return rotateLeft(n);
+	node->balance = 0;
+	--r->balance;
+	return rotateLeft(node);	
 }
 
-static avlNode *doubleRotateRight(avlNode *node)
+static avlNode *rotateRightAndBalance(avlNode *node)
 {
-	checkError(node, "cannot right double rotate a null node!");
+	checkError(node, "cannot right rotate and balance a null node!");
 	avlNode *n, *l;
 	n = node;
 	l = node->left;
 	checkError(l, "left child must exist for right rotation!");
+	node->balance = 0;
+	++l->balance;
+	return rotateRight(node);
+}
+
+static avlNode *doubleRotateLeftAndBalance(avlNode *node)
+{
+	checkError(node, "cannot left double rotate a null node!");
+	avlNode *r;
+	r = node->right;
+	checkError(r, "right child must exist for left rotation!");
+	checkError(r->left, "left grandchild must exist for double left rotation!");
+	char gcbal = r->left->balance;
+	checkError((abs(gcbal) < BALBOUND-1), "balance exceeded bound!");
+	r->left->balance = 0;
+	if (gcbal < 0) {
+		r->balance = 1;
+		node->balance = 0;
+	} else if (gcbal > 0) {
+		r->balance = 0;
+		node->balance = -1;
+	} else {
+		r->balance = 0;
+		node->balance = 0;
+	}		
+	rotateRight(r);
+	return rotateLeft(node);
+}
+
+static avlNode *doubleRotateRightAndBalance(avlNode *node)
+{
+	checkError(node, "cannot right double rotate a null node!");
+	avlNode *l;
+	l = node->left;
+	checkError(l, "left child must exist for right rotation!");
 	checkError(l->right, "right grandchild must exist for double right rotation!");
+	char gcbal = l->right->balance;
+	checkError((abs(gcbal) < BALBOUND-1), "balance exceeded bound!");
+	l->right->balance = 0;
+	if (gcbal < 0) {
+		l->balance = 0;
+		node->balance = 1;
+	} else if (gcbal > 0) {
+		l->balance = -1;
+		node->balance = 0;
+	} else {
+		l->balance = 0;
+		node->balance = 0;
+	}
 	rotateLeft(l);
-	return rotateRight(n);	
+	return rotateRight(node);	
 }
 
 static avlNode *balance(avlNode *node)
@@ -158,53 +252,20 @@ static avlNode *balance(avlNode *node)
 	if (node->balance == -2) {
 		checkError(l, "left child must exist!");
 		checkError((abs(l->balance) < BALBOUND), "balance exceeded bound!");
-		if (l->balance > 0) {
-			checkError(l->right, "right grandchild must exist for double right rotation!");
-			char gcbal = l->right->balance;
-			checkError((abs(gcbal) < BALBOUND-1), "balance exceeded bound!");
-			l->right->balance = 0;
-			if (gcbal < 0) {
-				l->balance = 0;
-				node->balance = 1;
-			} else if (gcbal > 0) {
-				l->balance = -1;
-				node->balance = 0;
-			} else {
-				l->balance = 0;
-				node->balance = 0;
-			}
-			return doubleRotateRight(node);
-		} else {
-			node->balance = 0;
-			++l->balance;
-			return rotateRight(node);
-		} 
+		return (l->balance > 0)?doubleRotateRightAndBalance(node):rotateRightAndBalance(node);
 	} else {
 		checkError(r, "right child must exist!");
 		checkError((abs(r->balance) < BALBOUND), "balance exceeded bound!");
-		if (r->balance < 0) {
-			checkError(r->left, "left grandchild must exist for double left rotation!");
-			char gcbal = r->left->balance;
-			checkError((abs(gcbal) < BALBOUND-1), "balance exceeded bound!");
-			r->left->balance = 0;
-			if (gcbal < 0) {
-				r->balance = 1;
-				node->balance = 0;
-			} else if (gcbal > 0) {
-				r->balance = 0;
-				node->balance = -1;
-			} else {
-				r->balance = 0;
-				node->balance = 0;
-			}		
-			return doubleRotateLeft(node);
-		} else {
-			node->balance = 0;
-			--r->balance;
-			return rotateLeft(node);	
-		}
+		return (r->balance < 0)?doubleRotateLeftAndBalance(node):rotateLeftAndBalance(node);
 	}
 }
+
+
+
+/**************/
+/*** Insert ***/
+/**************/
+
 
 static void updateBalance(avlTree *tree, avlNode *node)
 {
@@ -255,10 +316,28 @@ static avlNode *insert(avlTree *tree, avlNode *node, void *data)
 		}
 	} else {
 		tree->destroyData(data);
-		printf("Data already exists and was not inserted!\n");
-		return node;
+		return NULL;
 	}
 }
+
+avlNode *avlTreeInsert(avlTree *tree, void *data)
+{
+	checkError(tree, "cannot insert into a null tree!");
+	checkError(data, "null data not allowed to insert!");
+	if (!tree->root) {
+		tree->root = createAvlNode(data);
+		return tree->root;
+	} else {
+		return insert(tree, tree->root, data);
+	}
+}
+
+
+
+/**************/
+/*** Search ***/
+/**************/
+
 
 static avlNode *search(avlTree *tree, avlNode *node, void *data)
 {
@@ -272,6 +351,20 @@ static avlNode *search(avlTree *tree, avlNode *node, void *data)
 		return node;
 	}
 }
+
+avlNode *avlTreeSearch(avlTree *tree, void *data)
+{
+	checkError(tree, "cannot search a null tree!");
+	if (!tree->root) return NULL;
+	return search(tree, tree->root, data);
+}
+
+
+
+/**************/
+/*** Delete ***/
+/**************/
+
 
 static void reduceBalance(avlTree *tree, avlNode *node)
 {
@@ -329,20 +422,15 @@ static void replaceWithPredecessor(avlTree *tree, avlNode *node)
 	
 	pred->balance = bal;
 	node->balance = pbal;
-	(isRoot(node))?(makeRoot(tree, pred)):((node == p->left)?pairLeft(p, pred):pairRight(p, pred));
+	(isRoot(node))?(setRoot(tree, pred)):((node == p->left)?pairLeft(p, pred):pairRight(p, pred));
+	pairRight(pred, r);
+	pairLeft(node, pl);
+	pairRight(node, pr);
 	if (pred == l) {
 		pairLeft(pred, node);
-		pairRight(pred, r);
-		pairLeft(node, pl);
-		pairRight(node, pr);
-		return;
 	} else {
 		pairLeft(pred, l);
-		pairRight(pred, r);
-		pairLeft(node, pl);
-		pairRight(node, pr);
 		(pred == pp->left)?pairLeft(pp, node):pairRight(pp, node);
-		return;	
 	}
 }
 
@@ -372,7 +460,7 @@ static void deleteSingleChildNode(avlTree *tree, avlNode *node)
 	checkError(child, "single child can't be null!");
 	checkError(!otherChild, "other child must be null!");
 	if (isRoot(node)) {
-		makeRoot(tree, child);
+		setRoot(tree, child);
 		orphan(node);
 		destroyAvlNode(tree, node);
 		return;
@@ -404,78 +492,48 @@ static void delete(avlTree *tree, avlNode *node)
 	}
 }
 
-static void inorder(avlTree *tree, avlNode *node, int height)
+int avlTreeDelete(avlTree *tree, void *data)
+{
+	/* returns 1 if data is found and deleted */
+	checkError(tree, "cannot delete from null tree!");
+	if (!tree->root) return 0;
+	avlNode* node = search(tree, tree->root, data);
+	if (!node) return 0;
+	delete(tree, node);
+	return 1;
+}
+
+
+
+/*************************/
+/*** Printing the tree ***/
+/*************************/
+
+
+static void inorder(avlTree *tree, avlNode *node)
 {
 	checkError(tree, "cannot inorder traverse a null tree!");
 	if (node) {
-		if (node->left) inorder(tree, node->left, height+1);
-		printf("%3d: ", height);
+		inorder(tree, node->left);
 		tree->showData(node->data);
-		if (node->right) inorder(tree, node->right, height+1);
+		printf("\n");
+		inorder(tree, node->right);
 	}
 }
 
-static void preorder(avlTree *tree, avlNode *node, int height)
+static void preorder(avlTree *tree, avlNode *node)
 {
 	checkError(tree, "cannot preorder traverse a null tree!");
+	printf("{");
 	if (node) {
-		printf("%3d: ", height);
 		tree->showData(node->data);
-		if (node->left) preorder(tree, node->left, height+1);
-		if (node->right) preorder(tree, node->right, height+1);
-	}
-}
-
-avlTree *createAvlTree(avlCompareFunc compareData, avlShowFunc showData, avlDestroyFunc destroyData)
-{
-	avlTree *new = malloc(sizeof(avlTree));
-	checkMemory(new);
-	new->root = NULL;
-	new->compareData = compareData;
-	new->showData = showData;
-	new->destroyData = destroyData;
-	return new;
-}
-
-void destroyAvlTree(avlTree *tree)
-{
-	checkError(tree, "Cannot destroy NULL tree!");
-	destroyAvlNode(tree, tree->root);
-	free(tree);
-}
-
-avlNode *avlTreeInsert(avlTree *tree, void *data)
-{
-	checkError(tree, "cannot insert into a null tree!");
-	checkError(data, "null data not allowed to insert!");
-	if (!tree->root) {
-		tree->root = createAvlNode(data);
-		return tree->root;
+		preorder(tree, node->left);
+		preorder(tree, node->right);
 	} else {
-		return insert(tree, tree->root, data);
+		printf("NULL");
 	}
-}
-
-avlNode *avlTreeSearch(avlTree *tree, void *data)
-{
-	checkError(tree, "cannot search a null tree!");
-	if (!tree->root) return NULL;
-	return search(tree, tree->root, data);
-}
-
-void avlTreeDelete(avlTree *tree, void *data)
-{
-	checkError(tree, "cannot delete from null tree!");
-	if (!tree->root) {
-		printf("Deletion: tree has no elements!\n");
-		return;
-	}
-	avlNode* node = search(tree, tree->root, data);
-	if (!node) {
-		return;
-	}
-	delete(tree, node);
-	printf("deleted successfully!\n");
+	printf("}");
+	
 }
 
 void avlTreeShow(avlTree *tree)
@@ -486,9 +544,11 @@ void avlTreeShow(avlTree *tree)
 		return;
 	}
 	printf("\n--- showing tree inorder ---\n\n");
-	inorder(tree, tree->root, 0);
+	inorder(tree, tree->root);
 	printf("\n--- done showing tree inorder! ---\n");
 	printf("\n--- showing tree preorder ---\n\n");	
-	preorder(tree, tree->root, 0);
+	preorder(tree, tree->root);
 	printf("\n--- done showing tree preorder! ---\n");
 }
+
+

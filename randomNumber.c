@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "dbg.h"
 #include "randomNumber.h"
-#define MAX 1000
+#define MAX 100
 
 int getRandomNumber(void)
 {
@@ -30,7 +30,7 @@ void destroyNumber(void *num)
 void showNumber(void *num)
 {
 	if (num)
-		printf("%d\n", *(int *)num);
+		printf("%d", *(int *)num);
 	else
-		printf("NULL\n");
+		printf("NULL");
 }
