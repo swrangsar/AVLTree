@@ -20,7 +20,6 @@ static avlNode *doubleRotateRightAndBalance(avlNode *node);
 static avlNode *balance(avlNode *node);
 static void updateBalance(avlTree *tree, avlNode *node);
 static avlNode *insert(avlTree *tree, avlNode *node, void *data);
-static avlNode *search(avlTree *tree, avlNode *node, void *data);
 static void reduceBalance(avlTree *tree, avlNode *node);
 static avlNode *predecessor(avlNode *node);
 static void replaceWithPredecessor(avlTree *tree, avlNode *node);
@@ -339,24 +338,21 @@ avlNode *avlTreeInsert(avlTree *tree, void *data)
 /**************/
 
 
-static avlNode *search(avlTree *tree, avlNode *node, void *data)
-{
-	if (!node) return NULL;
-	int diff = tree->compareData(data, node->data);
-	if (diff < 0) {
-		return search(tree, node->left, data);
-	} else if (diff > 0) {
-		return search(tree, node->right, data);
-	} else {
-		return node;
-	}
-}
-
 avlNode *avlTreeSearch(avlTree *tree, void *data)
 {
 	checkError(tree, "cannot search a null tree!");
-	if (!tree->root) return NULL;
-	return search(tree, tree->root, data);
+	avlNode *node = tree->root;
+	int diff;
+	while (node) {
+		diff = tree->compareData(data, node->data);
+		if (diff < 0)
+			node = node->left;
+		else if (diff > 0)
+			node = node->right;
+		else
+			return node;
+	}
+	return NULL;
 }
 
 
@@ -496,8 +492,7 @@ int avlTreeDelete(avlTree *tree, void *data)
 {
 	/* returns 1 if data is found and deleted */
 	checkError(tree, "cannot delete from null tree!");
-	if (!tree->root) return 0;
-	avlNode* node = search(tree, tree->root, data);
+	avlNode* node = avlTreeSearch(tree, data);
 	if (!node) return 0;
 	delete(tree, node);
 	return 1;
