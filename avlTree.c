@@ -19,7 +19,6 @@ static avlNode *doubleRotateLeftAndBalance(avlNode *node);
 static avlNode *doubleRotateRightAndBalance(avlNode *node);
 static avlNode *balance(avlNode *node);
 static void updateBalance(avlTree *tree, avlNode *node);
-static avlNode *insert(avlTree *tree, avlNode *node, void *data);
 static void reduceBalance(avlTree *tree, avlNode *node);
 static avlNode *predecessor(avlNode *node);
 static void replaceWithPredecessor(avlTree *tree, avlNode *node);
@@ -287,48 +286,29 @@ static void updateBalance(avlTree *tree, avlNode *node)
 	}
 }
 
-static avlNode *insert(avlTree *tree, avlNode *node, void *data)
-{
-	checkError(tree, "cannot insert into a null tree!");
-	checkError(node, "cannot insert next to a null node!");
-	checkError(data, "null data not allowed to insert!");
-	int diff = tree->compareData(data, node->data);
-	if (diff < 0) {
-		if (node->left) {
-			return insert(tree, node->left, data);
-		} else {
-			/* do the insertion and balancing */
-			avlNode *new = createAvlNode(data);
-			pairLeft(node, new);
-			updateBalance(tree, new);
-			return new;
-		}
-	} else if (diff > 0) {
-		if (node->right) {
-			return insert(tree, node->right, data);
-		} else {
-			/* do the insertion and balancing */
-			avlNode *new = createAvlNode(data);
-			pairRight(node, new);
-			updateBalance(tree, new);
-			return new;
-		}
-	} else {
-		tree->destroyData(data);
-		return NULL;
-	}
-}
-
 avlNode *avlTreeInsert(avlTree *tree, void *data)
 {
 	checkError(tree, "cannot insert into a null tree!");
 	checkError(data, "null data not allowed to insert!");
-	if (!tree->root) {
-		tree->root = createAvlNode(data);
-		return tree->root;
-	} else {
-		return insert(tree, tree->root, data);
+	if (!tree->root) return (tree->root = createAvlNode(data));
+	int diff;
+	avlNode *node, *conductor, *new;
+	conductor = tree->root;
+	
+	while (conductor) {
+		node = conductor;
+		diff = tree->compareData(data, node->data);
+		if (diff < 0)
+			conductor = conductor->left;
+		else if (diff > 0)
+			conductor = conductor->right;
+		else
+			return NULL;
 	}
+	new = createAvlNode(data);
+	(diff < 0)?pairLeft(node, new):pairRight(node, new);
+	updateBalance(tree, new);
+	return new;
 }
 
 

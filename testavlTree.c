@@ -13,10 +13,13 @@ int main()
 	i = 0;
 	while (i++ < LIMIT) {
 		temp = getRandomNumber();
-		if (avlTreeInsert(tree, createNumber(temp)))
+		num = createNumber(temp);
+		if (avlTreeInsert(tree, num)) {
 			printf("inserted %d\n", temp);
-		else
+		} else {
+			destroyNumber(num);
 			printf("%d already exists!\n", temp);
+		}
 	}
 	
 	avlTreeShow(tree);
