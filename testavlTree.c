@@ -16,9 +16,6 @@ int main()
 		num = createNumber(temp);
 		if (avlTreeInsert(tree, num)) {
 			printf("inserted %d\n", temp);
-		} else {
-			destroyNumber(num);
-			printf("%d already exists!\n", temp);
 		}
 	}
 	
@@ -31,8 +28,6 @@ int main()
 		num = createNumber(temp);
 		if (avlTreeSearch(tree, num)) {
 			printf("found %d\n", temp);
-		} else {
-			printf("!found %d\n", temp);			
 		}
 		destroyNumber(num);
 	}

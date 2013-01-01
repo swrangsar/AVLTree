@@ -286,8 +286,8 @@ avlNode *avlTreeInsert(avlTree *tree, void *data)
 	checkError(tree, "cannot insert into a null tree!");
 	checkError(data, "null data not allowed to insert!");
 	if (!tree->root) return (tree->root = createAvlNode(data));
-	int diff;
 	avlNode *node, *conductor, *new;
+	int diff;
 	conductor = tree->root;
 	
 	while (conductor) {
@@ -298,12 +298,18 @@ avlNode *avlTreeInsert(avlTree *tree, void *data)
 		else if (diff > 0)
 			conductor = conductor->right;
 		else
-			return NULL;
+			break;
 	}
-	new = createAvlNode(data);
-	(diff < 0)?pairLeft(node, new):pairRight(node, new);
-	fixupInsert(tree, new);
-	return new;
+	if (diff) {
+		new = createAvlNode(data);
+		(diff < 0)?pairLeft(node, new):pairRight(node, new);
+		fixupInsert(tree, new);	
+		return new;
+	} else {
+		tree->destroyData(node->data);
+		node->data = data;
+		return node;
+	}
 }
 
 
