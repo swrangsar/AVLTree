@@ -21,7 +21,7 @@ static avlNode *balance(avlNode *node);
 static void fixupInsert(avlTree *tree, avlNode *node);
 static void fixupDelete(avlTree *tree, avlNode *node);
 static avlNode *predecessor(avlNode *node);
-static void replaceWithPredecessor(avlTree *tree, avlNode *node);
+static avlNode *replaceWithPredecessor(avlNode *node);
 static void deleteLeaf(avlTree *tree, avlNode *node);
 static void deleteSingleChildNode(avlTree *tree, avlNode *node);
 static void delete(avlTree *tree, avlNode *node);
@@ -380,35 +380,14 @@ static avlNode *predecessor(avlNode *node)
 	return predecessor;	
 }
 
-static void replaceWithPredecessor(avlTree *tree, avlNode *node)
+static avlNode *replaceWithPredecessor(avlNode *node)
 {
-	checkError(tree, "cannot replace with predecessor if null tree!");
 	checkError(node, "cannot replace a null node with predecessor!");
-	avlNode *l, *r, *p, *pred, *pl, *pr, *pp;
-	char bal, pbal;
-	l = node->left;
-	r = node->right;
-	p = node->parent;
-	bal = node->balance;
-	checkError(l && r, "cannot replace with predecessor if left n right child don't exist!");
-	pred = predecessor(node);
-	pl = pred->left;
-	pr = pred->right;
-	pp = pred->parent;
-	pbal = pred->balance;
-	
-	pred->balance = bal;
-	node->balance = pbal;
-	(isRoot(node))?(setRoot(tree, pred)):((node == p->left)?pairLeft(p, pred):pairRight(p, pred));
-	pairRight(pred, r);
-	pairLeft(node, pl);
-	pairRight(node, pr);
-	if (pred == l) {
-		pairLeft(pred, node);
-	} else {
-		pairLeft(pred, l);
-		(pred == pp->left)?pairLeft(pp, node):pairRight(pp, node);
-	}
+	avlNode *pred = predecessor(node);
+	void *temp = node->data;
+	node->data = pred->data;
+	pred->data = temp;
+	return pred;
 }
 
 static void deleteLeaf(avlTree *tree, avlNode *node)
@@ -464,8 +443,7 @@ static void delete(avlTree *tree, avlNode *node)
 	} else if (!l || !r) {
 		deleteSingleChildNode(tree, node);
 	} else {
-		replaceWithPredecessor(tree, node);
-		delete(tree, node);
+		delete(tree, replaceWithPredecessor(node));
 	}
 }
 
