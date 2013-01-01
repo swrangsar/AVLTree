@@ -18,8 +18,8 @@ static avlNode *rotateRightAndBalance(avlNode *node);
 static avlNode *doubleRotateLeftAndBalance(avlNode *node);
 static avlNode *doubleRotateRightAndBalance(avlNode *node);
 static avlNode *balance(avlNode *node);
-static void updateBalance(avlTree *tree, avlNode *node);
-static void reduceBalance(avlTree *tree, avlNode *node);
+static void fixupInsert(avlTree *tree, avlNode *node);
+static void fixupDelete(avlTree *tree, avlNode *node);
 static avlNode *predecessor(avlNode *node);
 static void replaceWithPredecessor(avlTree *tree, avlNode *node);
 static void deleteLeaf(avlTree *tree, avlNode *node);
@@ -265,24 +265,19 @@ static avlNode *balance(avlNode *node)
 /**************/
 
 
-static void updateBalance(avlTree *tree, avlNode *node)
+static void fixupInsert(avlTree *tree, avlNode *node)
 {
 	avlNode *p, *subroot;
 	checkError(tree, "cannot update balance of a null tree!");
 	checkError(node, "cannot update balance of a null node!");
-	if (isRoot(node)) return;
-	p = node->parent;
-	(node == p->left)?(--(p->balance)):(++(p->balance));
-	checkError((abs(p->balance) < BALBOUND), "balance exceeded bound!");
-	if (abs(p->balance) < 2) {
-		if (p->balance) updateBalance(tree, p);
-	} else {
-		subroot = balance(p);
-		if (isRoot(subroot)) {
-			tree->root = subroot;
-			return;
-		}
-		checkError(!subroot->balance, "insertion: balancing should produce a zero balance!");
+	while ((p = node->parent)) {
+		(node == p->left)?(--(p->balance)):(++(p->balance));
+		checkError((abs(p->balance) < BALBOUND), "balance exceeded bound!");
+		if (abs(p->balance) != 1) break;
+		node = p;
+	}
+	if (p && (abs(p->balance) == 2)) {
+		if (isRoot(subroot = balance(p))) (tree->root = subroot);
 	}
 }
 
@@ -307,7 +302,7 @@ avlNode *avlTreeInsert(avlTree *tree, void *data)
 	}
 	new = createAvlNode(data);
 	(diff < 0)?pairLeft(node, new):pairRight(node, new);
-	updateBalance(tree, new);
+	fixupInsert(tree, new);
 	return new;
 }
 
@@ -342,26 +337,32 @@ avlNode *avlTreeSearch(avlTree *tree, void *data)
 /**************/
 
 
-static void reduceBalance(avlTree *tree, avlNode *node)
+static void fixupDelete(avlTree *tree, avlNode *node)
 {
 	checkError(tree, "cannot reduce balance of a null tree!");
 	checkError(node, "cannot reduce the balance of the parent of a null node!");
-	avlNode *p = node->parent;
-	int bal = node->balance;
-	checkError((abs(bal) < BALBOUND), "balance exceeded bound!");
-	if (isRoot(node)) {
-		if (abs(bal) == 2) (tree->root = balance(node));
-		return;
-	}
-	
-	if (bal == 0) {
-		(node == p->left)?(++p->balance):(--p->balance);
-		checkError((abs(p->balance) < BALBOUND), "balance exceeded bound!");
-		reduceBalance(tree, p);
-	} else if (abs(bal) == 2) {
-		reduceBalance(tree, balance(node));
-	} else {
-		return;
+	avlNode *p;
+	int bal;	
+	while (node) {
+		p = node->parent;
+		bal = node->balance;
+		checkError((abs(bal) < BALBOUND), "balance exceeded bound!");
+		if (bal == 0) {
+			if (p) {
+				(node == p->left)?(++p->balance):(--p->balance);				
+				node = p;
+			} else {
+				return;
+			}
+		} else if (abs(bal) == 2) {
+			node = balance(node);
+			if (!node->parent) {
+				setRoot(tree, node);
+				return;
+			}
+		} else {
+			return;
+		}
 	}
 }
 
@@ -423,7 +424,7 @@ static void deleteLeaf(avlTree *tree, avlNode *node)
 	avlNode *p = node->parent;
 	(node == p->left)?(++(p->balance)):(--(p->balance));
 	destroyAvlNode(tree, node);
-	reduceBalance(tree, p);
+	fixupDelete(tree, p);
 }
 
 static void deleteSingleChildNode(avlTree *tree, avlNode *node)
@@ -447,7 +448,7 @@ static void deleteSingleChildNode(avlTree *tree, avlNode *node)
 	(node == p->left)?(pairLeft(p, child)):(pairRight(p, child));
 	orphan(node);
 	destroyAvlNode(tree, node);
-	reduceBalance(tree, p);
+	fixupDelete(tree, p);
 }
 
 static void delete(avlTree *tree, avlNode *node)
